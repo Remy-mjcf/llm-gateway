@@ -1,0 +1,63 @@
+# pyproject.toml: single source of truth for packaging, dependencies, and tool settings.
+
+[build-system]
+# hatchling builds the package; it understands the src/ layout with one setting (see below)
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "llm-gateway"
+version = "0.1.0"
+description = "Multi-provider LLM client (Gemini + Groq) with structured output, tool calling, retries, and async batching."
+readme = "README.md"
+# Matches the Python version of the project venv
+requires-python = ">=3.12"
+dependencies = [
+    "google-genai",      # Gemini SDK (native structured output and function calling)
+    "openai",            # Used for Groq via its OpenAI-compatible endpoint
+    "pydantic>=2",       # Request/response models and schema validation
+    "python-dotenv",     # Loads API keys from .env during local development
+    "fastapi",           # The HTTP API layer
+    "uvicorn",           # Server that runs the FastAPI app (no extras: fewer binary wheels)
+]
+
+[project.optional-dependencies]
+# Install with: uv pip install -e ".[dev]"
+dev = [
+    "pytest",            # Test runner
+    "pytest-asyncio",    # Lets pytest run async test functions
+    "ruff",              # Linter and formatter
+    "mypy",              # Static type checker (enforces the type hints)
+    "httpx",             # Required by FastAPI's TestClient
+    "ipykernel",         # Lets VS Code run the notebooks in this venv
+]
+
+[tool.hatch.build.targets.wheel]
+# Tells hatchling where the importable package lives under the src/ layout
+packages = ["src/llm_gateway"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+# Exploration notebooks are scratch work (cells share state, imports are informal),
+# so lint only the real package and tests
+extend-exclude = ["*.ipynb"]
+
+[tool.ruff.lint]
+# E/F: core errors, I: import sorting, UP: modernize syntax, B: likely bugs, ASYNC: async pitfalls
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+
+[tool.mypy]
+# Strict mode rejects missing annotations, so type hints stay complete as the code grows
+strict = true
+python_version = "3.12"
+files = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Run async tests automatically without decorating each one
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+# Make `pytest` find the package even before install if needed
+pythonpath = ["src"]
