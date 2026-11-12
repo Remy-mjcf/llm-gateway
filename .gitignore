@@ -1,0 +1,55 @@
+# --- Secrets (never commit these) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Python virtual environments ---
+.venv/
+venv/
+env/
+
+# --- Python bytecode and caches ---
+__pycache__/
+*.py[cod]
+*$py.class
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+
+# --- Packaging and build output ---
+build/
+dist/
+*.egg-info/
+.eggs/
+wheels/
+pip-wheel-metadata/
+
+# --- Test and coverage output ---
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+# Notebook outputs can leak keys or bloat diffs; consider `nbstripout`
+# before committing notebooks.
+
+# --- Logs and local data (e.g. cost/usage logs) ---
+*.log
+logs/
+data/raw/
+*.sqlite3
+*.db
+
+# --- Docker (local overrides only) ---
+docker-compose.override.yml
+
+# --- Editors and OS ---
+.vscode/
+.idea/
+.DS_Store
+*.swp
