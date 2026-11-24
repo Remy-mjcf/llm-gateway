@@ -1,0 +1,25 @@
+# .dockerignore: files that must never be sent to the Docker build.
+# Most important: .env holds real API keys and must not be copied into an image layer.
+
+# Secrets and local config
+.env
+.env.*
+
+# Version control and editor/OS noise
+.git
+.gitignore
+.DS_Store
+
+# Local virtual environments and tool caches
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# Not needed at run time (keeps the image and build context small)
+tests
+notebooks
+Notebooks
+scripts
