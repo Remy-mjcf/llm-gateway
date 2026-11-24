@@ -1,0 +1,93 @@
+# CI: runs on every push to main and on every pull request.
+# Job 1 checks the code (lint, types, tests). Job 2 proves the Docker image builds and boots.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Least privilege: these jobs only need to read the repo
+permissions:
+  contents: read
+
+# If a newer push arrives while a run is in progress, cancel the older run
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, types, tests
+    runs-on: ubuntu-latest
+    steps:
+      # Download the repository's code onto the runner
+      - uses: actions/checkout@v4
+
+      # Same Python minor version as the local venv and the Docker image
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip # reuse downloaded packages between runs
+
+      # Install the package in editable mode plus the dev tools (pytest, ruff, mypy, ...)
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      # Style and bug-pattern checks, then formatting (fails if a file needs reformatting)
+      - name: Ruff lint
+        run: ruff check .
+      - name: Ruff format check
+        run: ruff format --check .
+
+      # Strict type checking of src/ (settings come from pyproject.toml)
+      - name: Mypy
+        run: mypy
+
+      # The test suite uses fake providers, so it needs no API keys or network
+      - name: Pytest
+        run: pytest
+
+  docker:
+    name: Docker image builds and boots
+    runs-on: ubuntu-latest
+    needs: checks # only bother building if the code checks passed
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the image
+        run: docker build -t llm-gateway .
+
+      # Start the container with FAKE credentials. Nothing here calls a real provider:
+      # we only check that the server boots, its healthcheck passes, and auth is enforced.
+      - name: Start the container
+        run: |
+          docker run -d --name gateway -p 8000:8000 \
+            -e GROQ_API_KEY=ci-fake-groq-key \
+            -e GROQ_MODEL=ci-fake-model \
+            -e GATEWAY_API_KEYS=ci-test-key-0123456789abcdef \
+            llm-gateway
+
+      - name: Wait for /health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8000/health; then echo; exit 0; fi
+            sleep 1
+          done
+          echo "Server did not become healthy in 30s" >&2
+          exit 1
+
+      - name: Auth is enforced
+        run: |
+          # Without a key the API must answer 401
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/v1/stats)
+          test "$code" = "401" || { echo "expected 401, got $code" >&2; exit 1; }
+          # With the key it must answer 200
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "X-API-Key: ci-test-key-0123456789abcdef" http://localhost:8000/v1/stats)
+          test "$code" = "200" || { echo "expected 200, got $code" >&2; exit 1; }
+
+      # Show the container's logs if anything above failed, to make debugging easy
+      - name: Container logs (on failure)
+        if: failure()
+        run: docker logs gateway
