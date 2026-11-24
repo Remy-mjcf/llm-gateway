@@ -138,9 +138,7 @@ class GroqProvider:
         """Make one Groq call and normalize the result."""
         kwargs: dict[str, Any] = {
             "model": self.model,
-            "messages": cast(
-                "list[ChatCompletionMessageParam]", to_openai_messages(request)
-            ),
+            "messages": cast("list[ChatCompletionMessageParam]", to_openai_messages(request)),
         }
         if request.tools:
             kwargs["tools"] = [
@@ -210,9 +208,7 @@ class GroqProvider:
         return GenerateResponse(
             provider="groq",
             model=self.model,
-            message=Message(
-                role="assistant", content=raw_message.content, tool_calls=tool_calls
-            ),
+            message=Message(role="assistant", content=raw_message.content, tool_calls=tool_calls),
             parsed=parsed,
             usage=_usage_from(completion.usage),
             latency_ms=latency_ms,
